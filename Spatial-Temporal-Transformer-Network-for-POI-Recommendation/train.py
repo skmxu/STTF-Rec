@@ -6,7 +6,7 @@ import torch.utils.data as data
 from tqdm import tqdm
 from models import *
 
-def calculate_acc(prob, label):#acc计算
+def calculate_acc(prob, label, f2):#acc计算
     # log_prob (N, L), label (N), batch_size [*M]
     acc_train = [0, 0, 0, 0]
     for i, k in enumerate([1, 5, 10, 20]):
@@ -16,6 +16,10 @@ def calculate_acc(prob, label):#acc计算
             # topk_predict (k)
             if to_npy(label)[j] in topk_predict:
                 acc_train[i] += 1
+            if k == 20:
+                f2.write('next loc:{}'.format(label[j]))
+                f2.write('rec loc:{}'.format(topk_predict_batch))
+                f2.write('\n')
 
     return np.array(acc_train)
 
@@ -87,6 +91,7 @@ class Trainer:
         optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate, weight_decay=0)#lr学习率（步长）weight_decay (float, 可选) – 权重衰减（L2惩罚）（默认: 0）
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1000, gamma=1)#调整学习率
         f=open("result.txt","w",encoding='utf-8')
+        f2 = open("rec_point.txt", "w", encoding='utf-8')
         for t in range(self.num_epoch):
             # settings or validation and test
             valid_size, test_size = 0, 0
@@ -128,13 +133,13 @@ class Trainer:
                         valid_size += person_input.shape[0]
                         # v_prob_sample, v_label_sample = sampling_prob(prob_valid, valid_label, self.num_neg)
                         # loss_valid += F.cross_entropy(v_prob_sample, v_label_sample, reduction='sum')
-                        acc_valid += calculate_acc(prob, train_label)
+                        acc_valid += calculate_acc(prob, train_label, f2)
 
                     elif mask_len == person_traj_len[0]:  # only test
                         test_size += person_input.shape[0]
                         # v_prob_sample, v_label_sample = sampling_prob(prob_valid, valid_label, self.num_neg)
                         # loss_valid += F.cross_entropy(v_prob_sample, v_label_sample, reduction='sum')
-                        acc_test += calculate_acc(prob, train_label)
+                        acc_test += calculate_acc(prob, train_label, f2)
 
                 bar.update(self.batch_size)
             bar.close()
